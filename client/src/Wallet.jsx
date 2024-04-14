@@ -1,16 +1,38 @@
 import server from "./server";
 
-function Wallet({ address, setAddress, balance, setBalance }) {
+import { secp256k1 } from "ethereum-cryptography/secp256k1";
+import { toHex } from "ethereum-cryptography/utils";
+
+function Wallet({
+  address,
+  setAddress,
+  balance,
+  setBalance,
+  privateKey,
+  setPrivateKey,
+  signature,
+  setSignature,
+}) {
   async function onChange(evt) {
-    const address = evt.target.value;
-    setAddress(address);
-    if (address) {
-      const {
-        data: { balance },
-      } = await server.get(`balance/${address}`);
-      setBalance(balance);
-    } else {
-      setBalance(0);
+    const pKey = evt.target.value;
+    setAddress();
+    setSignature();
+    setPrivateKey(pKey);
+    if (pKey.trim().length > 0) {
+      address = toHex(secp256k1.getPublicKey(pKey));
+      const message = toHex(new Uint8Array(""));
+      // create signature that will be sent with address to the server
+      signature = secp256k1.sign(message, pKey).toCompactHex();
+      setAddress(address);
+      setSignature(signature);
+      if (address) {
+        const {
+          data: { balance },
+        } = await server.get(`balance/${address}`);
+        setBalance(balance);
+      } else {
+        setBalance(0);
+      }
     }
   }
 
@@ -19,10 +41,14 @@ function Wallet({ address, setAddress, balance, setBalance }) {
       <h1>Your Wallet</h1>
 
       <label>
-        Wallet Address
-        <input placeholder="Type an address, for example: 0x1" value={address} onChange={onChange}></input>
+        Private Key
+        <input
+          placeholder="Type in your private key"
+          value={privateKey}
+          onChange={onChange}
+        ></input>
       </label>
-
+      {address && <div>Address: {address.slice(0, 12)}...</div>}
       <div className="balance">Balance: {balance}</div>
     </div>
   );
